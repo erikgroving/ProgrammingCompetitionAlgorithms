@@ -7,6 +7,9 @@
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
+#define BY_DIST 0
+#define BY_SIZE 1
+
 // Parse the input
 void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 				int* num_groups, int* num_ap, int* num_walls) {
@@ -27,6 +30,8 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 		}
 		(*groups)[i].head = NULL;
 		(*groups)[i].num_aps_in_range = 0;
+		(*groups)[i].origin_dist_sq = (*groups)[i].x * (*groups)[i].x + 
+										(*groups)[i].y * (*groups)[i].y;
 	}
 
 	for (int i = 0; i < *num_ap; i++) {
@@ -35,10 +40,21 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 			exit(1);
 		}
 		(*aps)[i].num_g_in_range = 0;
+		double ap_dist = (*aps)[i].x * (*aps)[i].x + 
+										(*aps)[i].y * (*aps)[i].y;
+		ap_dist = sqrt(ap_dist);
+		double min, max;
+		min = ap_dist - (*aps)[i].r;
+		min *= abs(min);
+		max = ap_dist + (*aps)[i].r;
+		max *= max;
+		(*aps)[i].min = min;		
+		(*aps)[i].max = (max + 0.5);
 	}
 	
-	//apquickSort(aps, 0, *num_ap);
-
+	apquickSort(aps, 0, *num_ap);
+	gquickSort(groups, 0, *num_groups, BY_DIST);
+	
 	
 	for (int i = 0; i < *num_walls; i++) {
 		if (scanf ("%d %d %d %d", &(*walls)[i].x1,
@@ -106,21 +122,24 @@ int boxIntersect(struct wall a, struct wall b) {
 // of an access point.
 void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps, struct wall* walls,
 							int num_groups, int num_ap, int num_walls, int* num_valid, int* num_out) {
-	int valid[num_groups];
 	*num_valid = 0;
 	*num_out = 0;
-	int inc;
-	for (int i = 0; i < num_groups; i++) {
-		valid[i] = 0;
-		inc = 1;
-		for (int j = 0; j < num_ap; j++) {
+	int grp = 0;
+	
+	for (int j = 0; j < num_ap; j++) {
+		// find search starting point
+		while (grp < num_groups && groups[grp].origin_dist_sq < aps[j].min) {
+			grp++;
+		}
+		for (int i = grp; i < num_groups; i++) {
+			if (groups[i].origin_dist_sq > aps[j].max) {				
+				break;
+			}
 			if (inRange(groups[i], aps[j], walls, num_walls)) {
-				valid[i] = 1;
+				*num_valid += (groups[i].num_aps_in_range == 0);
 				groups[i].num_aps_in_range++;
 				aps[j].num_g_in_range++;
-				*num_valid += inc;
-				inc = 0;
-				
+			
 				// Create a new node
 				struct ap_ll* node = (struct ap_ll*)malloc(sizeof(struct ap_ll));
 				node->next = NULL;
@@ -139,10 +158,9 @@ void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps
 	}
 
 	(*in_range) = (struct group*)malloc((*num_valid) * sizeof(struct group));
-	
 	int j = 0;
 	for (int i = 0; i < num_groups; i++) {
-		if (valid[i]) {
+		if (groups[i].num_aps_in_range) {
 			(*in_range)[j] = groups[i];
 			j++;
 		}
@@ -151,7 +169,7 @@ void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps
 		}
 	}
 	
-	gquickSort(in_range, 0, *num_valid);
+	gquickSort(in_range, 0, *num_valid, BY_SIZE);
 
 	return;
 }
@@ -168,7 +186,7 @@ void apquickSort(struct ap** aps, int l, int r) {
 	a[rand_piv] = a[l];
 	a[l] = pivot;
 	for (int i = l + 1; i < r; i++) {
-		if (pivot.num_g_in_range > a[i].num_g_in_range) {
+		if (pivot.min > a[i].min) {
 			wall++;
 			tmp = a[i];
 			a[i] = a[wall];
@@ -184,7 +202,7 @@ void apquickSort(struct ap** aps, int l, int r) {
 	
 }
 
-void gquickSort(struct group** in_range, int l, int r) {
+void gquickSort(struct group** in_range, int l, int r, int spec) {
 	if (l >= r - 1)
 		return;
 	struct group tmp;
@@ -194,20 +212,33 @@ void gquickSort(struct group** in_range, int l, int r) {
 	int wall = l;
 	a[rand_piv] = a[l];
 	a[l] = pivot;
-	for (int i = l + 1; i < r; i++) {
-		if (pivot.size < a[i].size) {
-			wall++;
-			tmp = a[i];
-			a[i] = a[wall];
-			a[wall] = tmp;
+	
+	if (spec == BY_SIZE) {
+		for (int i = l + 1; i < r; i++) {
+			if (pivot.size < a[i].size) {
+				wall++;
+				tmp = a[i];
+				a[i] = a[wall];
+				a[wall] = tmp;
+			}
+		}
+	}
+	else {
+		for (int i = l + 1; i < r; i++) {
+			if (pivot.origin_dist_sq > a[i].origin_dist_sq) {
+				wall++;
+				tmp = a[i];
+				a[i] = a[wall];
+				a[wall] = tmp;
+			}			
 		}
 	}
 	tmp = a[wall];
 	a[wall] = pivot;
 	a[l] = tmp;
 	in_range = &a;
-	gquickSort(in_range, l, wall);
-	gquickSort(in_range, wall + 1, r);
+	gquickSort(in_range, l, wall, spec);
+	gquickSort(in_range, wall + 1, r, spec);
 	return;
 }
 
@@ -335,10 +366,7 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 
 					int to = curr_node;
 					curr_node = parent[curr_node];
-					
-
-					
-					
+	
 					// find path from parent to curr
 					for (int k = 0; k < degree[from]; k++) {
 						if(adj_list[from][k].dest == to) {
