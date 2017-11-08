@@ -308,9 +308,9 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 int maxFlow(struct edge** adj_list, int vertices, int* degree) {
 	int flow = 0;
 	int end_deg = degree[0];
-	degree[0] = (rand() % 7) % (end_deg + 1);
+	degree[0] = 5 % (end_deg + 1);
 	do {
-		degree[0] = (degree[0] + (rand() % 7) + 1) % (end_deg + 1);
+		degree[0] = min((degree[0] + 5), end_deg);
 		while(findPath(&adj_list, vertices, degree, &flow, &end_deg));
 	} while(degree[0] != end_deg);
 
