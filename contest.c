@@ -310,7 +310,7 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree) {
 	int end_deg = degree[0];
 	degree[0] = 5 % (end_deg + 1);
 	do {
-		degree[0] = min((degree[0] + 5), end_deg);
+		degree[0] = min((degree[0] + 1), end_deg);
 		while(findPath(&adj_list, vertices, degree, &flow, &end_deg));
 	} while(degree[0] != end_deg);
 
