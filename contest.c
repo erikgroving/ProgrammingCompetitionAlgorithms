@@ -305,15 +305,20 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 	return (*g);
 }
 
+int calls = 0;
+int num_popped = 0;
 int maxFlow(struct edge** adj_list, int vertices, int* degree) {
 	int flow = 0;
 	int end_deg = degree[0];
 	degree[0] = 5 % (end_deg + 1);
 	do {
-		degree[0] = min((degree[0] + 1), end_deg);
-		while(findPath(&adj_list, vertices, degree, &flow, &end_deg));
-	} while(degree[0] != end_deg);
+		degree[0] = min((degree[0] + 5), end_deg);
+		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)); {
+			calls++;
+		}
 
+	} while(degree[0] != end_deg);
+	printf("calls: %d\tnum_popped: %d\n", calls, num_popped);
 	return flow;
 }
 
@@ -335,9 +340,11 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 	dfs.tail = ver;
 	int term = vertices - 1;
 	
+
 	
 	// Perform the depth first searchpath
 	while (dfs.size) {
+		num_popped++;
 		// take the front of stack and pop
 		int v = dfs.head->v;
 		struct vll* tmp = dfs.head->next;
@@ -348,6 +355,7 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 		
 		// prepend to the linked list all elements 
 		// in range of current node
+		
 		for (int i = 0; i < degree[v]; i++) {
 			int dest = adj_list[v][i].dest;
 			int cap = adj_list[v][i].cap;
@@ -423,6 +431,7 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 				return 1;
 			}
 
+
 			// push on the stack
 			struct vll* node = (struct vll*)malloc(sizeof(struct vll));
 			node->v = dest;
@@ -435,19 +444,29 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 				dfs.tail = node;
 			}
 			// prepend if non-augmenting
-			else if (dest > v) {
+			else{ /*if (dest > v) */
 				node->next = dfs.head;
 				dfs.head = node;
 			}
+			
+
 			// append to tail if augmenting edge
-			else {
+			/*else {
 				node->next = NULL;
 				dfs.tail->next = node;
 				dfs.tail = dfs.tail->next;
-			}
+			}*/
 			
 			dfs.size++;
 			parent[dest] = v;
+			
+			// check if the node has a connection to the terminal, if it does, we can stop looping			
+			// or if the node's node has a connection to the terminal.
+			int dest2 = adj_list[dest][0].dest;
+			int cap2 = adj_list[dest][0].cap;
+			if (dest2 == term && cap2 > 0) {
+				i = degree[v];
+			}
 		}
 	}
 	

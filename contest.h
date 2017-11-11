@@ -4,31 +4,34 @@
 #define TRUE 1
 #define FALSE 0
 
-typedef struct stack {
-	int size;
+typedef struct stack {	
 	struct vll* head;
 	struct vll* tail;
+	int size;
 } stack;
 
 // vertex linked list
-typedef struct vll {
-	int v;
+typedef struct vll {	
 	struct vll* next;
+	int v;
 } vll;
 
 // wall linked list
 typedef struct wll {
-	int w;
 	struct wll* next;
+	int w;
 } wll;
 
 typedef struct edge {
 	int dest;
 	int cap;
+	int risk;
 } edge;
 
 
-typedef struct ap {
+typedef struct ap {	
+	struct wll* head;
+	struct wll* tail;
 	int x;
 	int y;
 	int r;
@@ -36,23 +39,21 @@ typedef struct ap {
 	int min;
 	int max;
 	int c;
-	struct wll* head;
-	struct wll* tail;
 } ap;
 
 typedef struct group {
+	struct ap_ll* head;
+	struct ap_ll* tail;
 	int x;
 	int y;
 	int size;
 	int num_aps_in_range;
 	int origin_dist_sq;
-	struct ap_ll* head;
-	struct ap_ll* tail;
 } group;
 
-typedef struct ap_ll {
-	int ap_idx;
+typedef struct ap_ll {	
 	struct ap_ll* next;
+	int ap_idx;
 } ap_ll;
 	
 
