@@ -305,20 +305,15 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 	return (*g);
 }
 
-int calls = 0;
-int num_popped = 0;
 int maxFlow(struct edge** adj_list, int vertices, int* degree) {
 	int flow = 0;
 	int end_deg = degree[0];
 	degree[0] = 5 % (end_deg + 1);
 	do {
 		degree[0] = min((degree[0] + 5), end_deg);
-		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)); {
-			calls++;
-		}
+		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)); 
 
 	} while(degree[0] != end_deg);
-	printf("calls: %d\tnum_popped: %d\n", calls, num_popped);
 	return flow;
 }
 
@@ -344,7 +339,6 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 	
 	// Perform the depth first searchpath
 	while (dfs.size) {
-		num_popped++;
 		// take the front of stack and pop
 		int v = dfs.head->v;
 		struct vll* tmp = dfs.head->next;
@@ -355,7 +349,6 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 		
 		// prepend to the linked list all elements 
 		// in range of current node
-		
 		for (int i = 0; i < degree[v]; i++) {
 			int dest = adj_list[v][i].dest;
 			int cap = adj_list[v][i].cap;

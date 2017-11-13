@@ -16,12 +16,6 @@ typedef struct vll {
 	int v;
 } vll;
 
-// wall linked list
-typedef struct wll {
-	struct wll* next;
-	int w;
-} wll;
-
 typedef struct edge {
 	int dest;
 	int cap;
@@ -30,8 +24,6 @@ typedef struct edge {
 
 
 typedef struct ap {	
-	struct wll* head;
-	struct wll* tail;
 	int x;
 	int y;
 	int r;
