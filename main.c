@@ -43,7 +43,10 @@ int main() {
 
 	
 	int max_flow = maxFlow(adj_list, vertices, degree);
-	
+	clock_gettime(CLOCK_REALTIME, &start);
+	for (int i = 0; i < 3054322; i++) {
+		malloc(sizeof(struct vll));
+	}
 	#ifdef TIME
 	clock_gettime(CLOCK_REALTIME, &end);
 	

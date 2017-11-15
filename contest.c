@@ -9,6 +9,7 @@
 #define max(a,b) a > b ? a : b
 #define BY_DIST 0
 #define BY_SIZE 1
+#define DEBUG
 
 // Parse the input
 void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
@@ -305,172 +306,195 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 	return (*g);
 }
 
+#ifdef DEBUG 
+int nodes_popped = 0;
+int nodes_pushed = 1;
+int calls = 0;
+#endif
 int maxFlow(struct edge** adj_list, int vertices, int* degree) {
 	int flow = 0;
 	int end_deg = degree[0];
 	degree[0] = 5 % (end_deg + 1);
 	do {
 		degree[0] = min((degree[0] + 5), end_deg);
-		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)); 
-
+		#ifdef DEBUG
+		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)){
+			calls++;
+		} 
+		#else
+		while(findPath(&adj_list, vertices, degree, &flow, &end_deg));
+		#endif
 	} while(degree[0] != end_deg);
+	#ifdef DEBUG
+	printf("popped: %d\tpushed: %d\t ratio: %f\tcalls: %d\tpushs/call: %f\tpops/call: %f\n",
+		nodes_popped, nodes_pushed, (float)nodes_pushed/nodes_popped, calls, (float)nodes_pushed/calls, (float)nodes_popped/calls);
+	#endif
 	return flow;
 }
 
 int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, int* end_deg) {
 	struct edge** adj_list = (*adj_list_tp);
 	struct stack dfs;
-	struct vll* ver = (struct vll*)malloc(sizeof(struct vll));
 	int* parent = (int *)malloc(sizeof(int) * vertices);
 	memset(parent, -1, vertices * sizeof(int));
 	parent[0] = -2;
 
-	
-	// Start by pushing the source onto the stack
-	dfs.size = 1;
-	ver->v = 0;
-	ver->next = NULL;
 
-	dfs.head = ver;
-	dfs.tail = ver;
+
+
 	int term = vertices - 1;
 	
 
-	
 	// Perform the depth first searchpath
-	while (dfs.size) {
-		// take the front of stack and pop
-		int v = dfs.head->v;
-		struct vll* tmp = dfs.head->next;
-		free(dfs.head);
-		dfs.head = tmp;
-		dfs.size--;
-		
-		
-		// prepend to the linked list all elements 
-		// in range of current node
-		for (int i = 0; i < degree[v]; i++) {
-			int dest = adj_list[v][i].dest;
-			int cap = adj_list[v][i].cap;
-			
-			if (parent[dest] != -1 || cap == 0) {
-				continue;
-			}
-			if (dest == term) {
-				int curr_node = dest;
-				int bottleneck = INT_MAX;
-				parent[curr_node] = v;
-				// find the bottleneck
-				while(curr_node != -2) {
-					int from = parent[curr_node];
-					if(from == -2) break;
+	for (int m = degree[0] - 1; m >= 0; m--) {
+		int dest_pre = adj_list[0][m].dest;
+		int cap_pre = adj_list[0][m].cap;
+		dfs.head = NULL;
+		if (parent[dest_pre] != -1 || cap_pre == 0) {
+			continue;
+		}
+		#ifdef DEBUG
+		nodes_pushed++;
+		#endif
+		struct vll* new_head = (struct vll*)malloc(sizeof(struct vll));
+		new_head->v = adj_list[0][m].dest;
+		new_head->next = NULL;
+		parent[dest_pre] = 0;
+		dfs.size = 1;
+		dfs.head = new_head;
+		while (dfs.size) {
+			#ifdef DEBUG
+			nodes_popped++;
+			#endif
+			// take the front of stack and pop
+			int v = dfs.head->v;
+			struct vll* tmp = dfs.head->next;
 
-					int to = curr_node;
-					curr_node = parent[curr_node];
-	
-					// find path from parent to curr
-					for (int k = 0; k < degree[from]; k++) {
-						if(adj_list[from][k].dest == to) {
-							bottleneck = min(bottleneck, adj_list[from][k].cap);
-							break;
+			free(dfs.head);
+			dfs.head = tmp;
+			dfs.size--;
+		
+			
+			// prepend to the linked list all elements 
+			// in range of current node
+			for (int i = 0; i < degree[v]; i++) {
+				int dest = adj_list[v][i].dest;
+				int cap = adj_list[v][i].cap;
+				
+				if (parent[dest] != -1 || cap == 0) {
+					continue;
+				}
+				if (dest == term) {
+					int curr_node = dest;
+					int bottleneck = INT_MAX;
+					parent[curr_node] = v;
+					// find the bottleneck
+					while(curr_node != -2) {
+						int from = parent[curr_node];
+						if(from == -2) break;
+
+						int to = curr_node;
+						curr_node = parent[curr_node];
+		
+						// find path from parent to curr
+						for (int k = 0; k < degree[from]; k++) {
+							if(adj_list[from][k].dest == to) {
+								bottleneck = min(bottleneck, adj_list[from][k].cap);
+								break;
+							}
 						}
 					}
-				}
-				//subtract the bottleneck in forward flow
-				// and add in backward flow
-				curr_node = dest;
-				while(parent[curr_node] != -2) {
-					int from = parent[curr_node];
-					int to = curr_node;
-					// find path from parent to curr
-					for (int k = 0; k < degree[from]; k++) {
-						if(adj_list[from][k].dest == to) {
-							if (parent[from] == -2 && adj_list[from][k].cap == bottleneck) {
-								struct edge tmp = adj_list[from][k];
-								adj_list[from][k] = adj_list[from][*end_deg - 1];
-								adj_list[from][*end_deg - 1] = tmp;
-								degree[0]--;
-								(*end_deg)--;
-							}
-							else {
-								adj_list[from][k].cap -= bottleneck;
-								if (to != term) {
-									for (int l = 0; l < degree[to]; l++) {
-										if (adj_list[to][l].dest == from) {
-											adj_list[to][l].cap += bottleneck;
-											break;
+					//subtract the bottleneck in forward flow
+					// and add in backward flow
+					curr_node = dest;
+					while(parent[curr_node] != -2) {
+						int from = parent[curr_node];
+						int to = curr_node;
+						// find path from parent to curr
+						for (int k = 0; k < degree[from]; k++) {
+							if(adj_list[from][k].dest == to) {
+								if (parent[from] == -2 && adj_list[from][k].cap == bottleneck) {
+									struct edge tmp = adj_list[from][k];
+									adj_list[from][k] = adj_list[from][*end_deg - 1];
+									adj_list[from][*end_deg - 1] = tmp;
+									degree[0]--;
+									(*end_deg)--;
+								}
+								else {
+									adj_list[from][k].cap -= bottleneck;
+									if (to != term) {
+										for (int l = 0; l < degree[to]; l++) {
+											if (adj_list[to][l].dest == from) {
+												adj_list[to][l].cap += bottleneck;
+												break;
+											}
 										}
 									}
 								}
+								break;
 							}
-							break;
 						}
+						curr_node = parent[curr_node];
 					}
-					curr_node = parent[curr_node];
-				}
-				
-				(*flow) += bottleneck;
-				adj_list_tp = &adj_list;
-				
-				free(parent);
-				if (dfs.head != NULL) {
-					while (dfs.head->next != NULL) {
-						struct vll* s1 = dfs.head;
-						dfs.head = dfs.head->next;
-						free(s1);
+					
+					(*flow) += bottleneck;
+					adj_list_tp = &adj_list;
+					
+					free(parent);
+					if (dfs.head != NULL) {
+						while (dfs.head->next != NULL) {
+							struct vll* s1 = dfs.head;
+							dfs.head = dfs.head->next;
+							free(s1);
+						}
+						free(dfs.head);
 					}
-					free(dfs.head);
+					return 1;
 				}
-				return 1;
-			}
 
 
-			// push on the stack
-			struct vll* node = (struct vll*)malloc(sizeof(struct vll));
-			node->v = dest;
-		
-		
-			// if empty, set head and tail
-			if (dfs.size == 0) {
-				node->next = NULL;
-				dfs.head = node;
-				dfs.tail = node;
-			}
-			// prepend if non-augmenting
-			else{ /*if (dest > v) */
-				node->next = dfs.head;
-				dfs.head = node;
-			}
+				// push on the stack
+				struct vll* node = (struct vll*)malloc(sizeof(struct vll));
+				node->v = dest;
 			
+			
+				// if empty, set head and tail
+				/*if (dfs.size == 0) {
+					node->next = NULL;
+					dfs.head = node;
+					dfs.tail = node;
+				}*/
+				// prepend if non-augmenting
+				//else{ /*if (dest > v) */
+					node->next = dfs.head;
+					dfs.head = node;
+					#ifdef DEBUG
+					nodes_pushed++;
+					#endif
+				//}
+				
 
-			// append to tail if augmenting edge
-			/*else {
-				node->next = NULL;
-				dfs.tail->next = node;
-				dfs.tail = dfs.tail->next;
-			}*/
-			
-			dfs.size++;
-			parent[dest] = v;
-			
-			// check if the node has a connection to the terminal, if it does, we can stop looping			
-			// or if the node's node has a connection to the terminal.
-			int dest2 = adj_list[dest][0].dest;
-			int cap2 = adj_list[dest][0].cap;
-			if (dest2 == term && cap2 > 0) {
-				i = degree[v];
+				// append to tail if augmenting edge
+				/*else {
+					node->next = NULL;
+					dfs.tail->next = node;
+					dfs.tail = dfs.tail->next;
+				}*/
+				
+				dfs.size++;
+				parent[dest] = v;
+				
+				// check if the node has a connection to the terminal, if it does, we can stop looping			
+				// or if the node's node has a connection to the terminal.
+				int dest2 = adj_list[dest][0].dest;
+				int cap2 = adj_list[dest][0].cap;
+				if (dest2 == term && cap2 > 0) {
+					i = degree[v];
+				}
 			}
 		}
 	}
-	
-	if (dfs.head != NULL) {
-		while (dfs.head->next != NULL) {
-			struct vll* s1 = dfs.head;
-			dfs.head = dfs.head->next;
-			free(s1);
-		}
-		free(dfs.head);
-	}
+
 	free(parent);
 	return 0;
 }
