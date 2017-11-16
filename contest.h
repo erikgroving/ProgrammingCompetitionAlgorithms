@@ -54,6 +54,7 @@ typedef struct wall {
 	int y1;
 	int x2;
 	int y2;
+	int md;
 } wall;
 
 
@@ -68,6 +69,6 @@ void groupsInRange(struct group**, struct group*, struct ap* , struct wall* ,
 void apquickSort(struct ap**, int, int);
 void gquickSort(struct group**, int, int, int);
 struct edge** createGraph(struct edge***, struct group*, struct ap*, int**, int, int);
-int maxFlow(struct edge**, int, int*);
-int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, int*) ;
+int maxFlow(struct edge**, int, int*, int, int);
+int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int, int* flow, int*) ;
 #endif /* CONTEST_H_ */

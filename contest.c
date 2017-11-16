@@ -65,9 +65,16 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 			printf("Incorrect input.\n");
 			exit(1);
 		}
+		(*walls)[i].md = max (&(*walls)[i].x1 * &(*walls)[i].x1 + 
+								&(*walls)[i].y1 * &(*walls)[i].y1,
+								&(*walls)[i].x2 * &(*walls)[i].x2 + 
+								&(*walls)[i].y2 * &(*walls)[i].y2);
 	}
 }
 
+#ifdef DEBUG
+int num_checks = 0;
+#endif
 int inRange(struct group g, struct ap aps, struct wall* walls, int num_walls) {
 	// first check if point g is with the box instead of circle to avoid expensive
 	// multiplication operations
@@ -90,6 +97,9 @@ int inRange(struct group g, struct ap aps, struct wall* walls, int num_walls) {
 		g_to_ap.x2 = aps.x;
 		g_to_ap.y2 = aps.y;
 		for (int i = 0; i < num_walls; i++) {
+			#ifdef DEBUG
+			num_checks++;
+			#endif
 			if(lineIntersect(g_to_ap, walls[i])) {
 				return FALSE;
 			}
@@ -311,42 +321,47 @@ int nodes_popped = 0;
 int nodes_pushed = 1;
 int calls = 0;
 #endif
-int maxFlow(struct edge** adj_list, int vertices, int* degree) {
+int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, int num_walls) {
 	int flow = 0;
+	int prev_deg = 0;
 	int end_deg = degree[0];
-	degree[0] = 5 % (end_deg + 1);
+	int inc = ((num_walls << 1) >= num_groups) ? 20 : 1	;
+	degree[0] = inc % (end_deg + 1);
 	do {
-		degree[0] = min((degree[0] + 5), end_deg);
+		prev_deg = max(0, degree[0] - inc);
+
+		degree[0] = min((degree[0] + inc), end_deg);
+
 		#ifdef DEBUG
-		while(findPath(&adj_list, vertices, degree, &flow, &end_deg)){
+		while(findPath(&adj_list, vertices, degree, prev_deg, &flow, &end_deg)){
 			calls++;
 		} 
 		#else
-		while(findPath(&adj_list, vertices, degree, &flow, &end_deg));
+		while(findPath(&adj_list, vertices, degree, prev_deg, &flow, &end_deg));
 		#endif
 	} while(degree[0] != end_deg);
 	#ifdef DEBUG
-	printf("popped: %d\tpushed: %d\t ratio: %f\tcalls: %d\tpushs/call: %f\tpops/call: %f\n",
-		nodes_popped, nodes_pushed, (float)nodes_pushed/nodes_popped, calls, (float)nodes_pushed/calls, (float)nodes_popped/calls);
+	printf("popped: %d\tpushed: %d\t ratio: %f\tcalls: %d\tpushes/call: %f\tpops/call: %f\npops+push/call: %f\n",
+		nodes_popped, nodes_pushed, (float)nodes_pushed/nodes_popped, 
+		calls, (float)nodes_pushed/calls, (float)nodes_popped/calls, (float)(nodes_popped+nodes_pushed)/calls);
+	
+	printf("num checks: %d\n", num_checks);
 	#endif
 	return flow;
 }
 
-int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, int* end_deg) {
+int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int prev_deg, int* flow, int* end_deg) {
 	struct edge** adj_list = (*adj_list_tp);
 	struct stack dfs;
 	int* parent = (int *)malloc(sizeof(int) * vertices);
 	memset(parent, -1, vertices * sizeof(int));
 	parent[0] = -2;
 
-
-
-
 	int term = vertices - 1;
 	
 
 	// Perform the depth first searchpath
-	for (int m = degree[0] - 1; m >= 0; m--) {
+	for (int m = degree[0] - 1; m >= prev_deg; m--) {
 		int dest_pre = adj_list[0][m].dest;
 		int cap_pre = adj_list[0][m].cap;
 		dfs.head = NULL;
@@ -491,6 +506,9 @@ int findPath(struct edge*** adj_list_tp, int vertices, int* degree, int* flow, i
 				if (dest2 == term && cap2 > 0) {
 					i = degree[v];
 				}
+				
+				
+				
 			}
 		}
 	}

@@ -15,19 +15,25 @@ int main() {
 	int num_valid;
 	int num_out;
 	
+
+
+	// Parse and initialize
+	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls);
 	#ifdef TIME
 	struct timespec start, end;
 	clock_gettime(CLOCK_REALTIME, &start);
 	#endif
-
-	// Parse and initialize
-	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls);
-
 	
 	// Calculate which access point are in range for a group of students
 	groupsInRange(in_range, groups, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out);
 
-
+	#ifdef TIME
+	clock_gettime(CLOCK_REALTIME, &end);
+	
+	double diff = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+	printf("TIME TO RUN: %lf\n", diff);
+	#endif	
+	
 	
 	// Create the graph with the groups that are in range!
 	// and the access points
@@ -42,18 +48,9 @@ int main() {
 
 
 	
-	int max_flow = maxFlow(adj_list, vertices, degree);
-	clock_gettime(CLOCK_REALTIME, &start);
-	for (int i = 0; i < 3054322; i++) {
-		malloc(sizeof(struct vll));
-	}
-	#ifdef TIME
-	clock_gettime(CLOCK_REALTIME, &end);
-	
-	double diff = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-	printf("TIME TO RUN: %lf\n", diff);
-	#endif	
-	
+	int max_flow = maxFlow(adj_list, vertices, degree, num_groups, num_walls);
+
+
 	printf("%d %d\n", num_out, max_flow);
 	
 /*
