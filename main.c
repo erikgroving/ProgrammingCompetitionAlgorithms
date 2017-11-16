@@ -9,24 +9,30 @@ int main() {
 	struct group** in_range = (struct group**)malloc(sizeof(struct group*));
 	struct ap* aps = NULL;
 	struct wall* walls = NULL;
+	struct buc** buckets;
 	int num_groups;
 	int num_aps;
 	int num_walls;
 	int num_valid;
 	int num_out;
-	
 
+		
+	buckets = (struct buc**)malloc(sizeof(struct buc*) * BUCK);
+	for (int i = 0; i < BUCK; i++) {
+		buckets[i] = (struct buc*)malloc(sizeof(struct buc) * BUCK);
+	}
 
-	// Parse and initialize
-	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls);
 	#ifdef TIME
 	struct timespec start, end;
 	clock_gettime(CLOCK_REALTIME, &start);
-	#endif
+	#endif	
 	
-	// Calculate which access point are in range for a group of students
-	groupsInRange(in_range, groups, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out);
+	// Parse and initialize
+	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls, &buckets);
 
+
+	// Calculate which access point are in range for a group of students
+	groupsInRange(in_range, groups, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out, buckets);
 	#ifdef TIME
 	clock_gettime(CLOCK_REALTIME, &end);
 	
@@ -34,6 +40,8 @@ int main() {
 	printf("TIME TO RUN: %lf\n", diff);
 	#endif	
 	
+	
+
 	
 	// Create the graph with the groups that are in range!
 	// and the access points
