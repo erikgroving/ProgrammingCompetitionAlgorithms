@@ -3,8 +3,10 @@
 
 #define TRUE 1
 #define FALSE 0
-#define BUCK 4
-
+#define BUCK 8
+#define BSHIFT 3
+#define min(a,b) a < b ? a : b
+#define max(a,b) a > b ? a : b
 
 typedef struct stack {	
 	struct vll* head;
@@ -29,6 +31,7 @@ typedef struct ap {
 	int x;
 	int y;
 	int r;
+	int r_sq;
 	int* bucket;
 	int tot_buck;
 	int num_g_in_range;
@@ -53,31 +56,37 @@ typedef struct ap_ll {
 	int ap_idx;
 } ap_ll;
 	
+typedef struct fwall {
+	float x1;
+	float y1;
+	float x2;
+	float y2;
+} fwall;
 
 typedef struct wall {
-	int x1;
-	int y1;
-	int x2;
-	int y2;
+	float x1;
+	float y1;
+	float x2;
+	float y2;
 } wall;
-
-typedef struct buc {
+typedef struct bucket {
 	int* w;
 	int size;
-	struct wall region;	
-} buc ;
+	struct wall region;
+}bucket;
 
 
 
-void parseInput(struct group**, struct ap**, struct wall**, int* , int* , int*, struct buc***);
-void makeBuckets(struct ap** aps, struct wall* walls,
-				int num_ap, int num_walls, struct buc***);
-int inRange(struct group, struct ap, struct wall*, int, struct buc**);
+void parseInput(struct group**, struct ap**, struct wall**, int* , int* , int*);
+void makeBuckets(int num_walls, struct wall* walls, struct bucket buckets[BUCK * BUCK], float, float);
+
+int inRange(struct group, struct ap, struct wall*, struct bucket b[BUCK * BUCK], int, float, float);
 int lineIntersect(struct wall, struct wall);
 int isLeftAndRight(struct wall, struct wall);
+int fboxIntersect(struct wall a, struct wall b);
 int boxIntersect(struct wall, struct wall);
-void groupsInRange(struct group**, struct group*, struct ap* , struct wall* ,
-							int, int, int, int*, int*, struct buc**);
+void groupsInRange(struct group**, struct group*, struct bucket b[BUCK * BUCK], struct ap* , struct wall* ,
+							int, int, int, int*, int*, float, float);
 void wquickSort(struct wall**, int, int);
 void apquickSort(struct ap**, int, int);
 void gquickSort(struct group**, int, int, int);

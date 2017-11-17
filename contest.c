@@ -5,15 +5,13 @@
 #include <string.h>
 #include <limits.h>
 
-#define min(a,b) a < b ? a : b
-#define max(a,b) a > b ? a : b
 #define BY_DIST 0
 #define BY_SIZE 1
-#define DEBUG
+//#define DEBUG
 
 // Parse the input
 void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
-				int* num_groups, int* num_ap, int* num_walls, struct buc*** buckets) {
+				int* num_groups, int* num_ap, int* num_walls) {
 	
 	if (scanf("%d %d %d", num_groups, num_ap, num_walls) != 3) {
 		printf("Incorrect input.\n");
@@ -51,6 +49,7 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 		max *= max;
 		(*aps)[i].min = min;		
 		(*aps)[i].max = (max + 0.5);
+		(*aps)[i].r_sq = (*aps)[i].r * (*aps)[i].r;
 	}
 	
 	apquickSort(aps, 0, *num_ap);
@@ -58,7 +57,7 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 	
 	
 	for (int i = 0; i < *num_walls; i++) {
-		if (scanf ("%d %d %d %d", &(*walls)[i].x1,
+		if (scanf ("%f %f %f %f", &(*walls)[i].x1,
 									&(*walls)[i].y1, 
 									&(*walls)[i].x2,
 									&(*walls)[i].y2) != 4) {
@@ -66,112 +65,57 @@ void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 			exit(1);
 		}
 	}
-	//makeBuckets(aps, *walls, *num_ap, *num_walls, buckets);
 }
-/*
-void makeBuckets(struct ap** aps, struct wall* walls,
-				int num_ap, int num_walls, struct buc*** buckets) {
-	int max_x = 0;
-	int max_y = 0;
-	struct buc** bucket = (*buckets);
-	for (int i = 0; i < num_walls; i++) {
-		if (walls[i].x2 > max_x || walls[i].x1 > max_x) {
-			max_x = max(walls[i].x1, walls[i].x2);
-		}
-		if (walls[i].y2 > max_y || walls[i].y1 > max_y) {
-			max_y = max(walls[i].y1, walls[i].y2);
-		}
-	}
-	float incx = max_x / BUCK;
-	float incy = max_y / BUCK;
-	wall curr_buck;
-	wall ap_square;
-	for (int j = 0; j < BUCK; j++) {
-		for (int k = 0; k < BUCK; k++) {
-			bucket[j][k].size = 0;
-			curr_buck.x1 = j * incx;
-			curr_buck.y1 = k * incy;
-			curr_buck.x2 = curr_buck.x1 + incx + 1;
-			curr_buck.y2 = curr_buck.y1 + incy + 1;
-			bucket[j][k].region = curr_buck;
+
+void makeBuckets(int num_walls, struct wall* walls, struct bucket b[(BUCK << BSHIFT)], float incx, float incy) {
+	// Making buckets
+	for (int i = 0; i < BUCK; i++) {
+		for (int j = 0; j < BUCK; j++) {
+			b[(i << BSHIFT) + j].size = 0;
+			struct wall tmp;
+			tmp.x1 = (i * incx);
+			tmp.y1 = (j * incy);
+			tmp.x2 = tmp.x1 + incx;
+			tmp.y2 = tmp.y1 + incy;
+			b[(i << BSHIFT) + j].region = tmp;
 		}
 	}
-	
-	for (int j = 0; j < BUCK; j++) {
-		for (int k = 0; k < BUCK; k++) {
-			curr_buck = bucket[j][k].region;
-			for (int i = 0; i < num_walls; i++) {
-				struct wall resized;
-				float slope = (float)(walls[i].y2 - walls[i].y1) / (walls[i].x2 - walls[i].x1);
-				float intercept = walls[i].y2 - (walls[i].x2 * slope);
-				resized.x1 = curr_buck.x1;
-				resized.x2 = curr_buck.x2;
-				resized.y1 = slope * resized.x1 + intercept;
-				resized.y2 = slope * resized.x2 + intercept;
-				if (boxIntersect(curr_buck, walls[i])) {
-					bucket[j][k].size++;
+	// Finding walls in each bucket
+	for (int i = 0; i < BUCK; i++) {
+		for (int j = 0; j < BUCK; j++) {
+			struct bucket tmpb = b[(i << BSHIFT) + j];
+			
+			for (int k = 0; k < num_walls; k++) {
+				if (boxIntersect(walls[k], tmpb.region)) {
+					tmpb.size++;
 				}
 			}
-		
-			for (int i = 0; i < num_walls; i++) {
-				bucket[j][k].w = (int *)malloc(sizeof(int) * bucket[j][k].size);
+			if (tmpb.size) {
+				tmpb.w = malloc(sizeof(int) * tmpb.size);
 				int idx = 0;
-				for (int i = 0; i < num_walls; i++) {
-					if (boxIntersect(curr_buck, walls[i])) {
-						bucket[j][k].w[idx] = i;
+				for (int k = 0; k < num_walls; k++) {
+					if (boxIntersect(walls[k], tmpb.region)) {
+						tmpb.w[idx] = k;
 						idx++;
 					}
 				}
 			}
+			b[(i << BSHIFT) + j] = tmpb;
 		}
 	}
-	
-	
-	for (int i = 0; i < num_ap; i++) {
-		int tot_buck = 0;
-		int r = (*aps)[i].r;
-		ap_square.x1 = (*aps)[i].x - r;
-		ap_square.x2 = ap_square.x1 + (r << 1);		
-		ap_square.y1 = (*aps)[i].y - r;
-		ap_square.y2 = ap_square.y1 + (r << 1);
-
-		for (int j = 0; j < BUCK; j++) {
-			for (int k = 0; k < BUCK; k++) {
-				curr_buck = bucket[j][k].region;
-				if (boxIntersect(curr_buck, ap_square)) {
-					tot_buck++;
-				}
-			}
-		}
-		
-		(*aps)[i].tot_buck = tot_buck;
-		(*aps)[i].bucket = (int *)malloc(tot_buck * sizeof(int));
-		int idx = 0;
-		for (int j = 0; j < BUCK; j++) {
-			for (int k = 0; k < BUCK; k++) {
-				curr_buck = bucket[j][k].region;
-				if (boxIntersect(curr_buck, ap_square)) {
-					(*aps)[i].bucket[idx] = j * BUCK + k;
-					idx++;
-				}
-			}
-		}
-		printf("%d\n", tot_buck);
-	}
-	exit(0);
-
-	buckets = &bucket;
-	return ;
 }
-*/
+
+
 
 
 #ifdef DEBUG
 int num_checks = 0;
 int box_intersect = 0;
+int num_block = 0;
+int num_ok = 0;
 #endif
 
-int inRange(struct group g, struct ap aps, struct wall* walls, int num_walls, struct buc** buckets) {
+int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(BUCK << BSHIFT)], int num_walls, float incx, float incy) {
 	// first check if point g is with the box instead of circle to avoid expensive
 	// multiplication operations
 	
@@ -185,64 +129,118 @@ int inRange(struct group g, struct ap aps, struct wall* walls, int num_walls, st
 	
 
 	int dist_sq = (x_dist) * (x_dist) + (y_dist) * (y_dist);
-	int *seen = (int*)malloc(num_walls * sizeof(int));
-	memset(seen, 0, num_walls * sizeof(int));
-	if (dist_sq == 1) {
-		return TRUE;
-	}
-	if (dist_sq <= aps.r * aps.r) {
+
+	//int *seen = (int*)malloc(num_walls * sizeof(int));
+	//memset(seen, 0, num_walls * sizeof(int));
+	if (dist_sq <= aps.r_sq) {
 		// Check to see if there is a wall
-		wall g_to_ap;
+		struct wall g_to_ap;
 		g_to_ap.x1 = g.x;
 		g_to_ap.y1 = g.y;
 		g_to_ap.x2 = aps.x;
 		g_to_ap.y2 = aps.y;
-		/*if (num_walls) {
-			for (int j = 0; j < BUCK; j++) {
-				struct buc* cp = buckets[j];
-				for (int k = 0; k < BUCK; k++) {
-					struct buc d = cp[k];
-					if (boxIntersect(d.region, g_to_ap)) {
-						box_intersect++;
-						for (int i = 0; i < d.size; i++) {
-							int w_idx = d.w[i];
-							if (!seen[w_idx]) {
-								#ifdef DEBUG
-								num_checks++;
-								#endif
-								if(lineIntersect(g_to_ap, walls[w_idx])) {
-									free(seen);
-									return FALSE;
-								}
-								seen[w_idx] = 1;
-							}
-						}
+		
+		float max_y = (incy * BUCK);
+		float max_x = (incx * BUCK);
+					
+		if (g_to_ap.x2 > max_x && g_to_ap.x1 > max_x) {
+			return TRUE;
+		}
+		if (g_to_ap.y1 > max_y && g_to_ap.y2 > max_y) {
+			return TRUE;
+		}	
+		
+		// First, find the direction of the line!
+		int x_dir = g_to_ap.x2 > g_to_ap.x1 ? 1 : -1;
+		int y_dir = g_to_ap.y2 > g_to_ap.y1 ? 1 : -1;
+		
+	
+
+		
+		float slope = (g_to_ap.y2 - g_to_ap.y1) / (g_to_ap.x2 - g_to_ap.x1);
+		float intercept = g_to_ap.y2 - (slope * g_to_ap.x2);
+
+		
+		// find the starting bucket
+		int bx = min(g_to_ap.x1 / incx, BUCK - 1);
+		int by = min(g_to_ap.y1 / incy, BUCK - 1);
+		// then find the end bucket
+		int final_bx = min(g_to_ap.x2 / incx, BUCK - 1);
+		int final_by = min(g_to_ap.y2 / incy, BUCK - 1);
+
+		int reached = 0;
+		do {
+			//printf("bx: %d\tby:%d\tfinalbx: %d\tfinal_by: %d\n", bx, by, final_bx, final_by);
+			reached = (bx == final_bx && by == final_by);			
+			
+			// check current bucket
+			struct bucket curr_b = b[(bx << BSHIFT) + by];
+			
+			for (int i = 0; i < curr_b.size; i++) {
+				//int w_idx = curr_b.w[i];
+				//if (!seen[w_idx]) {
+					#ifdef DEBUG
+					num_checks++;
+					#endif
+					
+					if (lineIntersect(g_to_ap, walls[curr_b.w[i]])) {		
+						//free(seen);
+						#ifdef DEBUG
+						num_block++;
+						#endif
+						return FALSE;
 					}
+					#ifdef DEBUG
+					num_ok++;
+					#endif
+				//	seen[w_idx] = TRUE;
+				//}
+			}
+			if (bx == final_bx) {
+				by += y_dir;
+			}
+			else if (by == final_by) {
+				bx += x_dir;
+			}
+			else  {
+				bx += x_dir;
+				struct wall tmp;
+				float inc = (x_dir == 1) ? incx : -incx;
+				tmp.x1 = curr_b.region.x1 + inc;
+				tmp.x2 = curr_b.region.x2 + inc;
+				tmp.y1 = slope * tmp.x1 + intercept;
+				tmp.y2 = slope * tmp.x2 + intercept;
+				#ifdef DEBUG
+				box_intersect++;
+				#endif	
+				if (!boxIntersect(tmp, curr_b.region)) {
+					bx -= x_dir;
+					by += y_dir;
 				}
 			}
-		}*/
-		
+		} while (!reached);
+/*
 		for (int i = 0; i < num_walls; i++) {
+	
 			#ifdef DEBUG
 			num_checks++;
 			#endif
 			if(lineIntersect(g_to_ap, walls[i])) {
-				free(seen);
+				//free(seen);
 				return FALSE;
 			}
-		}
-		free(seen);
+		}*/
+		//free(seen);
 
 		return TRUE;
 	}
-	free(seen);
+	//free(seen);
 	return FALSE;
 }
 
 int lineIntersect(struct wall a, struct wall b) {
-	return (boxIntersect(a, b) &&
-		isLeftAndRight(a, b) &&
-		isLeftAndRight(b, a));	
+	return (isLeftAndRight(a, b) &&
+		isLeftAndRight(b, a) && boxIntersect(a, b));	
 }
 
 int isLeftAndRight(struct wall a, struct wall b) {
@@ -251,19 +249,18 @@ int isLeftAndRight(struct wall a, struct wall b) {
 	return (pos_p1 * pos_p2 <= 0);
 }
 
-
 int boxIntersect(struct wall a, struct wall b) {
 	
-	return ((min(a.x1, a.x2)) <= (max(b.x2, b.x1)) &&
+	return (min(a.x1, a.x2)) <= (max(b.x2, b.x1)) &&
 			(max(a.x1, a.x2)) >= (min(b.x1, b.x2)) &&
 			(min(a.y1, a.y2)) <= (max(b.y2, b.y1)) &&
-			(max(a.y1, a.y2)) >= (min(b.y1, b.y2)));
+			(max(a.y1, a.y2)) >= (min(b.y1, b.y2));
 }
 
 // Returns a group pointer that contains all the groups that are in range
 // of an access point.
-void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps, struct wall* walls,
-							int num_groups, int num_ap, int num_walls, int* num_valid, int* num_out, struct buc** buckets) {
+void groupsInRange(struct group** in_range, struct group* groups, struct bucket b[(BUCK << BSHIFT)], struct ap* aps, struct wall* walls,
+							int num_groups, int num_ap, int num_walls, int* num_valid, int* num_out, float incx, float incy) {
 	*num_valid = 0;
 	*num_out = 0;
 	int grp = 0;
@@ -277,7 +274,7 @@ void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps
 			if (groups[i].origin_dist_sq > aps[j].max) {				
 				break;
 			}
-			if (inRange(groups[i], aps[j], walls, num_walls, buckets)) {
+			if (inRange(groups[i], aps[j], walls, b, num_walls, incx, incy)) {
 				*num_valid += (groups[i].num_aps_in_range == 0);
 				groups[i].num_aps_in_range++;
 				aps[j].num_g_in_range++;
@@ -285,6 +282,7 @@ void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps
 				// Create a new node
 				struct ap_ll* node = (struct ap_ll*)malloc(sizeof(struct ap_ll));
 				node->ap_idx = j;
+				node->next = NULL;
 				// Insert into the list
 				if (groups[i].head == NULL) {
 					groups[i].head = node;
@@ -314,34 +312,6 @@ void groupsInRange(struct group** in_range, struct group* groups, struct ap* aps
 
 	return;
 }
-
-/*
-void wquickSort(struct wall** walls, int l, int r) {
-	if (l >= r - 1)
-		return;
-	struct wall tmp;
-	struct wall* a = (*walls);
-	int rand_piv = (rand() % (r - l)) + l;
-	struct wall pivot = a[rand_piv];
-	int wall = l;
-	a[rand_piv] = a[l];
-	a[l] = pivot;
-	for (int i = l + 1; i < r; i++) {
-		if (pivot.md > a[i].md) {
-			wall++;
-			tmp = a[i];
-			a[i] = a[wall];
-			a[wall] = tmp;
-		}
-	}
-	tmp = a[wall];
-	a[wall] = pivot;
-	a[l] = tmp;
-	walls = &a;
-	wquickSort(walls, l, wall);
-	wquickSort(walls, wall + 1, r);
-	
-}*/
 
 void apquickSort(struct ap** aps, int l, int r) {
 	if (l >= r - 1)
@@ -507,15 +477,16 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 	for(int i = 1; i <= degree[0]; i++) {
 		int* group_cap = &(adj_list[0][i - 1].cap);
 		//printf("node: %d\n", i);
+		struct edge* a = adj_list[i];
 		for (int j = 0; j < degree[i]; j++) {			
-			int dest = adj_list[i][j].dest;
+			int dest = a[j].dest;
 			if (adj_list[dest][0].dest == vertices - 1 && adj_list[dest][0].cap) {
 				int* ap_cap = &(adj_list[dest][0].cap);
 				int bottleneck = min(*group_cap, *ap_cap);
 				flow += bottleneck;
 				//printf("g: %d ap: %d b: %d\n",*group_cap, *ap_cap, bottleneck);
-				adj_list[i][j].cap -= bottleneck;
-				adj_list[i][j].mirror->cap += bottleneck;
+				a[j].cap -= bottleneck;
+				a[j].mirror->cap += bottleneck;
 				
 				(*ap_cap) -= bottleneck;
 				(*group_cap) -= bottleneck;
@@ -537,15 +508,15 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 
 	int prev_deg = 0;
 	int end_deg = degree[0];
-	int inc = ((num_walls << 1) >= num_groups) ? 20 : 1	;
-	degree[0] = inc % (end_deg + 1);
+	//int inc = 1;//((num_walls << 1) >= num_groups) ? 1 : 1	;
+	degree[0] = 1 % (end_deg + 1);
 	
 	
 	
 	do {		
-		prev_deg = max(0, degree[0] - inc);
+		prev_deg = max(0, degree[0] - 1);
 
-		degree[0] = min((degree[0] + inc), end_deg);
+		degree[0] = min((degree[0] + 1), end_deg);
 		#ifdef DEBUG
 		while(findPath(&adj_list, vertices, ap_start, degree, prev_deg, &flow, &end_deg)){
 			calls++;
@@ -560,7 +531,7 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 		calls, (float)nodes_pushed/calls, (float)nodes_popped/calls, (float)(nodes_popped+nodes_pushed)/calls);
 	
 	printf("box_intersects: %d\n", box_intersect);
-	printf("num checks: %d\n", num_checks);
+	printf("num checks: %d\tnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
 	#endif
 	return flow;
 }
