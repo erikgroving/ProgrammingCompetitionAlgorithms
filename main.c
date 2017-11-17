@@ -19,18 +19,20 @@ int main() {
 	struct bucket b[BUCK * BUCK];
 
 
+	
 	#ifdef TIME
-	struct timespec start, end;
+	struct timespec start,  end;
 	clock_gettime(CLOCK_REALTIME, &start);
 	#endif	
-	
+		
 	// Parse and initialize
 	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls);
 
-	
+
 	float incy;
 	float incx;
 	// find max and min for wall
+
 	int max_x = 0;
 	int max_y = 0;
 	for (int i = 0; i < num_walls; i++) {
@@ -42,11 +44,14 @@ int main() {
 	
 	incx = (float)max_x / BUCK;
 	incy = (float)max_y / BUCK;
+	
 	makeBuckets(num_walls, walls, b, incx, incy);
 
+	
 	// Calculate which access point are in range for a group of students
 	groupsInRange(in_range, groups, b, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out, incx, incy);
 
+	
 	
 
 
@@ -57,6 +62,7 @@ int main() {
 	int* degree = (int *)malloc(sizeof(int) * (num_valid + num_aps + 2));
 
 	adj_list = createGraph(&adj_list, *in_range, aps, &degree, num_aps, num_valid);
+	
 
 	
 	// Ford-Fulkerson on the graph!
@@ -64,18 +70,22 @@ int main() {
 
 
 	
+
 	int max_flow = maxFlow(adj_list, vertices, degree, num_groups, num_walls);
 
+
 	printf("%d %d\n", num_out, max_flow);
-	
 	#ifdef TIME
 	clock_gettime(CLOCK_REALTIME, &end);
 	
 	double diff = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 	printf("TIME TO RUN: %lf\n", diff);
 	#endif	
-
-/*
+	/* it actually takes a few milliseconds to iterate over all the 
+	linked lists and free the nodes..........
+	WE ARE TERMINATING ANYWAY D:, THE MEMORY LINKED TO THE PROCESS
+	IS FREED... DON'T YELL AT ME T___T */
+	/*
 	for (int i = 0; i < vertices; i++) {
 		if (adj_list[i]) {
 			free(adj_list[i]);
@@ -106,8 +116,8 @@ int main() {
 	free(degree);
 	free(groups);
 	free(aps);
-	free(walls);*/
-
+	free(walls);
+*/
 	return 0;
 }
 

@@ -32,8 +32,6 @@ typedef struct ap {
 	int y;
 	int r;
 	int r_sq;
-	int* bucket;
-	int tot_buck;
 	int num_g_in_range;
 	int min;
 	int max;
@@ -55,13 +53,7 @@ typedef struct ap_ll {
 	struct ap_ll* next;
 	int ap_idx;
 } ap_ll;
-	
-typedef struct fwall {
-	float x1;
-	float y1;
-	float x2;
-	float y2;
-} fwall;
+
 
 typedef struct wall {
 	float x1;
@@ -79,15 +71,13 @@ typedef struct bucket {
 
 void parseInput(struct group**, struct ap**, struct wall**, int* , int* , int*);
 void makeBuckets(int num_walls, struct wall* walls, struct bucket buckets[BUCK * BUCK], float, float);
-
 int inRange(struct group, struct ap, struct wall*, struct bucket b[BUCK * BUCK], int, float, float);
 int lineIntersect(struct wall, struct wall);
 int isLeftAndRight(struct wall, struct wall);
-int fboxIntersect(struct wall a, struct wall b);
 int boxIntersect(struct wall, struct wall);
 void groupsInRange(struct group**, struct group*, struct bucket b[BUCK * BUCK], struct ap* , struct wall* ,
 							int, int, int, int*, int*, float, float);
-void wquickSort(struct wall**, int, int);
+//void wquickSort(struct wall**, int, int);
 void apquickSort(struct ap**, int, int);
 void gquickSort(struct group**, int, int, int);
 struct edge** createGraph(struct edge***, struct group*, struct ap*, int**, int, int);

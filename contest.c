@@ -108,6 +108,7 @@ void makeBuckets(int num_walls, struct wall* walls, struct bucket b[(BUCK << BSH
 
 
 
+
 #ifdef DEBUG
 int num_checks = 0;
 int box_intersect = 0;
@@ -130,8 +131,6 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 
 	int dist_sq = (x_dist) * (x_dist) + (y_dist) * (y_dist);
 
-	//int *seen = (int*)malloc(num_walls * sizeof(int));
-	//memset(seen, 0, num_walls * sizeof(int));
 	if (dist_sq <= aps.r_sq) {
 		// Check to see if there is a wall
 		struct wall g_to_ap;
@@ -177,24 +176,21 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 			struct bucket curr_b = b[(bx << BSHIFT) + by];
 			
 			for (int i = 0; i < curr_b.size; i++) {
-				//int w_idx = curr_b.w[i];
-				//if (!seen[w_idx]) {
+
+				#ifdef DEBUG
+				num_checks++;
+				#endif
+				
+				if (lineIntersect(g_to_ap, walls[curr_b.w[i]])) {		
 					#ifdef DEBUG
-					num_checks++;
+					num_block++;
 					#endif
-					
-					if (lineIntersect(g_to_ap, walls[curr_b.w[i]])) {		
-						//free(seen);
-						#ifdef DEBUG
-						num_block++;
-						#endif
-						return FALSE;
-					}
-					#ifdef DEBUG
-					num_ok++;
-					#endif
-				//	seen[w_idx] = TRUE;
-				//}
+					return FALSE;
+				}
+				#ifdef DEBUG
+				num_ok++;
+				#endif
+
 			}
 			if (bx == final_bx) {
 				by += y_dir;
@@ -230,11 +226,9 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 				return FALSE;
 			}
 		}*/
-		//free(seen);
 
 		return TRUE;
 	}
-	//free(seen);
 	return FALSE;
 }
 
@@ -308,7 +302,7 @@ void groupsInRange(struct group** in_range, struct group* groups, struct bucket 
 		}
 	}
 	
-	gquickSort(in_range, 0, *num_valid, BY_SIZE);
+	//gquickSort(in_range, 0, *num_valid, BY_SIZE);
 
 	return;
 }
