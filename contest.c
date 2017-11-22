@@ -4,10 +4,9 @@
 #include <math.h>
 #include <string.h>
 #include <limits.h>
-
 #define BY_DIST 0
 #define BY_SIZE 1
-//#define DEBUG
+#define DEBUG
 
 // Parse the input
 void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
@@ -91,7 +90,7 @@ void makeBuckets(int num_walls, struct wall* walls, struct bucket b[(BUCK << BSH
 				}
 			}
 			if (tmpb.size) {
-				tmpb.w = malloc(sizeof(int) * tmpb.size);
+				tmpb.w = (int*)malloc(sizeof(int) * tmpb.size);
 				int idx = 0;
 				for (int k = 0; k < num_walls; k++) {
 					if (boxIntersect(walls[k], tmpb.region)) {
@@ -131,7 +130,7 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 
 	int dist_sq = (x_dist) * (x_dist) + (y_dist) * (y_dist);
 
-	if (dist_sq <= aps.r_sq) {
+	if (dist_sq <= aps.r_sq && num_walls) {
 		// Check to see if there is a wall
 		struct wall g_to_ap;
 		g_to_ap.x1 = g.x;
@@ -226,15 +225,17 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 				return FALSE;
 			}
 		}*/
-
+		return TRUE;
+	}
+	else if (dist_sq <= aps.r_sq ) {
 		return TRUE;
 	}
 	return FALSE;
 }
 
 int lineIntersect(struct wall a, struct wall b) {
-	return (isLeftAndRight(a, b) &&
-		isLeftAndRight(b, a) && boxIntersect(a, b));	
+	return ( boxIntersect(a, b) && isLeftAndRight(a, b) &&
+		isLeftAndRight(b, a));	
 }
 
 int isLeftAndRight(struct wall a, struct wall b) {
@@ -436,7 +437,7 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 
 		(*degree)[i + 1] = in_range[i].num_aps_in_range;
 	}
-	
+	/*
 	for (int i = 0; i < num_valid; i++) {
 		for (int j = 0; j < in_range[i].num_aps_in_range; j++) {
 			int min_r = aps[graph[i + 1][j].dest - (1 + num_valid)].r;
@@ -446,12 +447,15 @@ struct edge** createGraph(struct edge*** a, struct group* in_range, struct ap* a
 					min_idx = k;
 					min_r = aps[graph[i + 1][k].dest - (1 + num_valid)].r;
 				}
+				steps++;
 			}
+			graph[i + 1][min_idx].mirror->mirror = &graph[i + 1][j];
+			graph[i + 1][j].mirror->mirror = &graph[i + 1][min_idx];
 			edge tmp = graph[i + 1][min_idx];
 			graph[i + 1][min_idx]  = graph[i + 1][j];
 			graph[i + 1][j] = tmp;
 		}
-	}
+	}*/
 
 	g = &graph;
 	free(edge_idx);
@@ -463,11 +467,14 @@ int nodes_popped = 0;
 int nodes_pushed = 1;
 int calls = 0;
 #endif
+
 int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, int num_walls) {
 	int flow = 0;
 	int ap_start = degree[0] + 1;
 	// Greedy ford fulkerson! No augmenting paths
-	
+	int* dead = malloc(sizeof(int) * vertices);
+	memset(dead, 0, vertices * sizeof(int));
+
 	for(int i = 1; i <= degree[0]; i++) {
 		int* group_cap = &(adj_list[0][i - 1].cap);
 		//printf("node: %d\n", i);
@@ -503,34 +510,34 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 	int prev_deg = 0;
 	int end_deg = degree[0];
 	//int inc = 1;//((num_walls << 1) >= num_groups) ? 1 : 1	;
-	degree[0] = 1 % (end_deg + 1);
-	
-	
-	
-	do {		
-		prev_deg = max(0, degree[0] - 1);
+	degree[0] = 0;
 
-		degree[0] = min((degree[0] + 1), end_deg);
+	do {		
+		prev_deg = degree[0] - 1;
+
+		degree[0] = degree[0] + 1;
 		#ifdef DEBUG
-		while(findPath(&adj_list, vertices, ap_start, degree, prev_deg, &flow, &end_deg)){
+		while(findPath(&adj_list, vertices, ap_start, degree, prev_deg, &flow, &end_deg, dead)){
 			calls++;
-		} 
+		}
+		calls++;
 		#else
-		while(findPath(&adj_list, vertices, ap_start, degree, prev_deg, &flow, &end_deg));
+		while(findPath(&adj_list, vertices, ap_start, degree, prev_deg, &flow, &end_deg, dead));
 		#endif
-	} while(degree[0] != end_deg);
+	} while(degree[0] < end_deg);
 	#ifdef DEBUG
-	printf("popped: %d\tpushed: %d\t ratio: %f\tcalls: %d\tpushes/call: %f\tpops/call: %f\npops+push/call: %f\n",
+	printf("popped: %d\npushed: %d\n ratio: %f\ncalls: %d\n\tpushes/call: %f\tpops/call: %f\npops+push/call: %f\n",
 		nodes_popped, nodes_pushed, (float)nodes_pushed/nodes_popped, 
 		calls, (float)nodes_pushed/calls, (float)nodes_popped/calls, (float)(nodes_popped+nodes_pushed)/calls);
 	
 	printf("box_intersects: %d\n", box_intersect);
 	printf("num checks: %d\tnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
 	#endif
+	free(dead);
 	return flow;
 }
 
-int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree, int prev_deg, int* flow, int* end_deg) {
+int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree, int prev_deg, int* flow, int* end_deg, int* dead) {
 	struct edge** adj_list = (*adj_list_tp);
 	struct stack dfs;
 	int* parent = (int *)malloc(sizeof(int) * vertices);
@@ -539,24 +546,26 @@ int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree
 
 	int term = vertices - 1;
 	
-
+	struct vll* nodes = (struct vll*)malloc(sizeof(struct vll) * vertices);
+	int n_idx = 0;
+	
 	// Perform the depth first searchpath
-	for (int m = degree[0] - 1; m >= prev_deg; m--) {
+	for (int m = degree[0] - 1; m > prev_deg; m--) {
 		int dest_pre = adj_list[0][m].dest;
 		int cap_pre = adj_list[0][m].cap;
-		dfs.head = NULL;
 		if (parent[dest_pre] != -1 || cap_pre == 0) {
 			continue;
 		}
 		#ifdef DEBUG
 		nodes_pushed++;
 		#endif
-		struct vll* new_head = (struct vll*)malloc(sizeof(struct vll));
-		new_head->v = adj_list[0][m].dest;
-		new_head->next = NULL;
+
+		nodes[n_idx].v = adj_list[0][m].dest;
+		nodes[n_idx].next = NULL;
 		parent[dest_pre] = 0;
 		dfs.size = 1;
-		dfs.head = new_head;
+		dfs.head = &nodes[n_idx];
+		n_idx++;
 		dfs.tail = dfs.head;
 		while (dfs.size) {
 			#ifdef DEBUG
@@ -564,25 +573,27 @@ int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree
 			#endif
 			// take the front of stack and pop
 			int v = dfs.head->v;
-			struct vll* tmp = dfs.head->next;
-
-			free(dfs.head);
-			dfs.head = tmp;
+			dfs.head = dfs.head->next;
 			dfs.size--;
 		
 			
 			// prepend to the linked list all elements 
 			// in range of current node
-
+			int still_alive = 0;
 			for (int i = 0; i < degree[v]; i++) {
 				int dest = adj_list[v][i].dest;
 
 				
 				int cap = adj_list[v][i].cap;
-
-				if (parent[dest] != -1 || cap == 0) {
+				
+				int no_cap_or_dead = (cap == 0 || dead[dest]);
+				if (!no_cap_or_dead) {
+					still_alive = 1;
+				}
+				if (parent[dest] != -1 || no_cap_or_dead) {
 					continue;
 				}
+				
 				if (dest == term) {
 					int curr_node = dest;
 					int bottleneck = INT_MAX;
@@ -614,17 +625,13 @@ int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree
 								if (parent[from] == -2 && adj_list[from][k].cap == bottleneck) {
 									adj_list[from][k] = adj_list[from][*end_deg - 1];
 									degree[0]--;
+									prev_deg--;
 									(*end_deg)--;
 								}
 								else {
 									adj_list[from][k].cap -= bottleneck;
-									if (to != term) {
-										for (int l = 0; l < degree[to]; l++) {
-											if (adj_list[to][l].dest == from) {
-												adj_list[to][l].cap += bottleneck;
-												break;
-											}
-										}
+									if (from != 0 && to != term) {
+										adj_list[from][k].mirror->cap += bottleneck;
 									}
 								}
 								break;
@@ -637,49 +644,55 @@ int findPath(struct edge*** adj_list_tp, int vertices, int ap_start, int* degree
 					adj_list_tp = &adj_list;
 					
 					free(parent);
-					if (dfs.head != NULL) {
-						while (dfs.head->next != NULL) {
-							struct vll* s1 = dfs.head;
-							dfs.head = dfs.head->next;
-							free(s1);
-						}
-						free(dfs.head);
-					}
+					free(nodes);
 					return 1;
 				}
 
 
-				// push on the stack
-				struct vll* node = (struct vll*)malloc(sizeof(struct vll));
-				node->v = dest;
-				node->next = NULL;
-				if (!dfs.size) {			
-					dfs.head = node;
-					dfs.tail = dfs.head;
-				}
-				else {
-					dfs.tail->next = node;
-					dfs.tail = dfs.tail->next;
-				}
-				#ifdef DEBUG
-				nodes_pushed++;
-				#endif
+
 
 				
-				dfs.size++;
-				parent[dest] = v;
 				
 				// check if the node has a connection to the terminal, if it does, we can stop looping			
 				// or if the node's node has a connection to the terminal.
 				int dest2 = adj_list[dest][0].dest;
 				int cap2 = adj_list[dest][0].cap;
-				if (dest2 == term && cap2 > 0) {
+				int found = (dest2 == term && cap2 > 0);
+				if (found) {
 					i = degree[v];
-				}				
+				}		
+
+				// push on the stack
+				nodes[n_idx].v = dest;
+
+				if (!dfs.size) {
+					nodes[n_idx].next = NULL;
+					dfs.head = &nodes[n_idx];
+					dfs.tail = dfs.head;
+				}
+				else if (found) {
+					nodes[n_idx].next = dfs.head;
+					dfs.head = &nodes[n_idx];
+				}
+				else {
+					nodes[n_idx].next = NULL;
+					dfs.tail->next = &nodes[n_idx];
+					dfs.tail = dfs.tail->next;
+				}
+				n_idx++;
+				#ifdef DEBUG
+				nodes_pushed++;
+				#endif
+				
+				parent[dest] = v;
+				dfs.size++;				
 			}
+			dead[v] = !still_alive;
+
 		}
 	}
 
 	free(parent);
+	free(nodes);
 	return 0;
 }

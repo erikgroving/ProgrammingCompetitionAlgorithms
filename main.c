@@ -3,7 +3,7 @@
 #include "contest.h"
 #include <time.h>
 #include <math.h>
-//#define TIME
+#define TIME
 int main() {
 	struct group* groups = NULL;
 	struct group** in_range = (struct group**)malloc(sizeof(struct group*));
@@ -19,12 +19,7 @@ int main() {
 	struct bucket b[BUCK * BUCK];
 
 
-	
-	#ifdef TIME
-	struct timespec start,  end;
-	clock_gettime(CLOCK_REALTIME, &start);
-	#endif	
-		
+
 	// Parse and initialize
 	parseInput(&groups, &aps, &walls, &num_groups, &num_aps, &num_walls);
 
@@ -32,29 +27,39 @@ int main() {
 	float incy;
 	float incx;
 	// find max and min for wall
-
-	int max_x = 0;
-	int max_y = 0;
-	for (int i = 0; i < num_walls; i++) {
-		int wmax_x = max (walls[i].x1, walls[i].x2);
-		max_x = max(max_x, wmax_x);
-		int wmax_y = max (walls[i].y1, walls[i].y2);
-		max_y = max(max_y, wmax_y);
+	if (num_walls){
+		int max_x = 0;
+		int max_y = 0;
+		for (int i = 0; i < num_walls; i++) {
+			int wmax_x = max (walls[i].x1, walls[i].x2);
+			max_x = max(max_x, wmax_x);
+			int wmax_y = max (walls[i].y1, walls[i].y2);
+			max_y = max(max_y, wmax_y);
+		}
+		
+		incx = (float)max_x / BUCK;
+		incy = (float)max_y / BUCK;
+		
+		makeBuckets(num_walls, walls, b, incx, incy);
 	}
-	
-	incx = (float)max_x / BUCK;
-	incy = (float)max_y / BUCK;
-	
-	makeBuckets(num_walls, walls, b, incx, incy);
 
 	
+	#ifdef TIME
+	struct timespec start,  end;
+	clock_gettime(CLOCK_REALTIME, &start);
+	#endif	
 	// Calculate which access point are in range for a group of students
 	groupsInRange(in_range, groups, b, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out, incx, incy);
 
 	
 	
 
-
+	#ifdef TIME
+	clock_gettime(CLOCK_REALTIME, &end);
+	
+	double diff = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+	printf("TIME TO RUN: %lf\n", diff);
+	#endif	
 	
 	// Create the graph with the groups that are in range!
 	// and the access points
@@ -68,19 +73,15 @@ int main() {
 	// Ford-Fulkerson on the graph!
 	int vertices = num_valid + num_aps + 2;
 
-
+	
 	
 
 	int max_flow = maxFlow(adj_list, vertices, degree, num_groups, num_walls);
 
 
 	printf("%d %d\n", num_out, max_flow);
-	#ifdef TIME
-	clock_gettime(CLOCK_REALTIME, &end);
-	
-	double diff = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-	printf("TIME TO RUN: %lf\n", diff);
-	#endif	
+
+		
 	/* it actually takes a few milliseconds to iterate over all the 
 	linked lists and free the nodes..........
 	WE ARE TERMINATING ANYWAY D:, THE MEMORY LINKED TO THE PROCESS
@@ -102,13 +103,14 @@ int main() {
 			}
 		}
 	}
-	
-	for (int i = 0; i < BUCK * BUCK; i++) {
+	if(num_walls) {  
+		for (int i = 0; i < BUCK * BUCK; i++) {
 
-			if (b[i].size) {
-				free(b[i].w);
-			}
+				if (b[i].size) {
+					free(b[i].w);
+				}
 
+		}
 	}
 	free((*in_range));
 	free(in_range);
@@ -116,8 +118,9 @@ int main() {
 	free(degree);
 	free(groups);
 	free(aps);
-	free(walls);
-*/
+	free(walls);*/
+
+
 	return 0;
 }
 

@@ -82,5 +82,5 @@ void apquickSort(struct ap**, int, int);
 void gquickSort(struct group**, int, int, int);
 struct edge** createGraph(struct edge***, struct group*, struct ap*, int**, int, int);
 int maxFlow(struct edge**, int, int*, int, int);
-int findPath(struct edge*** adj_list_tp, int vertices, int, int* degree, int, int* flow, int*) ;
+int findPath(struct edge*** adj_list_tp, int vertices, int, int* degree, int, int* flow, int*, int*) ;
 #endif /* CONTEST_H_ */
