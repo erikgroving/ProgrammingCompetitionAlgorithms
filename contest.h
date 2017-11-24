@@ -3,8 +3,8 @@
 
 #define TRUE 1
 #define FALSE 0
-#define BUCK 8
-#define BSHIFT 3
+#define BUCK 32
+#define BSHIFT 5
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
@@ -62,8 +62,8 @@ typedef struct wall {
 	float y2;
 } wall;
 typedef struct bucket {
-	int* w;
 	int size;
+	struct vll* head;
 	struct wall region;
 }bucket;
 

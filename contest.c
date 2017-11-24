@@ -6,8 +6,14 @@
 #include <limits.h>
 #define BY_DIST 0
 #define BY_SIZE 1
-#define DEBUG
+//#define DEBUG
 
+#ifdef DEBUG
+int num_checks = 0;
+int box_intersect = 0;
+int num_block = 0;
+int num_ok = 0;
+#endif
 // Parse the input
 void parseInput(struct group** groups, struct ap** aps, struct wall** walls,
 				int* num_groups, int* num_ap, int* num_walls) {
@@ -77,43 +83,71 @@ void makeBuckets(int num_walls, struct wall* walls, struct bucket b[(BUCK << BSH
 			tmp.x2 = tmp.x1 + incx;
 			tmp.y2 = tmp.y1 + incy;
 			b[(i << BSHIFT) + j].region = tmp;
+			b[(i << BSHIFT) + j].head = NULL;
 		}
 	}
-	// Finding walls in each bucket
-	for (int i = 0; i < BUCK; i++) {
-		for (int j = 0; j < BUCK; j++) {
-			struct bucket tmpb = b[(i << BSHIFT) + j];
+	
+	for (int i = 0; i < num_walls; i++) {
+		struct wall c_wall = walls[i];
+		// First, find the direction of the line!
+		int x_dir = c_wall.x2 > c_wall.x1 ? 1 : -1;
+		int y_dir = c_wall.y2 > c_wall.y1 ? 1 : -1;
+		
+	
+
+		
+		float slope = (c_wall.y2 - c_wall.y1) / (c_wall.x2 - c_wall.x1);
+		float intercept = c_wall.y2 - (slope * c_wall.x2);
+
+		
+		// find the starting bucket
+		int bx = min(c_wall.x1 / incx, BUCK - 1);
+		int by = min(c_wall.y1 / incy, BUCK - 1);
+		// then find the end bucket
+		int final_bx = min(c_wall.x2 / incx, BUCK - 1);
+		int final_by = min(c_wall.y2 / incy, BUCK - 1);
+
+		int reached = 0;
+		do {
+			reached = (bx == final_bx && by == final_by);			
 			
-			for (int k = 0; k < num_walls; k++) {
-				if (boxIntersect(walls[k], tmpb.region)) {
-					tmpb.size++;
+			struct bucket curr_b = b[(bx << BSHIFT) + by];
+			
+			// put in current bucket to current bucket YEE
+			curr_b.size++;
+			struct vll* node = malloc(sizeof(struct vll));
+			node->next = curr_b.head;
+			node->v = i;
+			curr_b.head = node;
+			b[(bx << BSHIFT) + by] = curr_b;
+
+			if (bx == final_bx) {
+				by += y_dir;
+			}
+			else if (by == final_by) {
+				bx += x_dir;
+			}
+			else  {
+				bx += x_dir;
+				struct wall tmp;
+				float inc = (x_dir == 1) ? incx : -incx;
+				tmp.x1 = curr_b.region.x1 + inc;
+				tmp.x2 = curr_b.region.x2 + inc;
+				tmp.y1 = slope * tmp.x1 + intercept;
+				tmp.y2 = slope * tmp.x2 + intercept;
+				#ifdef DEBUG
+				box_intersect++;
+				#endif	
+				if (!boxIntersect(tmp, curr_b.region)) {
+					bx -= x_dir;
+					by += y_dir;
 				}
 			}
-			if (tmpb.size) {
-				tmpb.w = (int*)malloc(sizeof(int) * tmpb.size);
-				int idx = 0;
-				for (int k = 0; k < num_walls; k++) {
-					if (boxIntersect(walls[k], tmpb.region)) {
-						tmpb.w[idx] = k;
-						idx++;
-					}
-				}
-			}
-			b[(i << BSHIFT) + j] = tmpb;
-		}
+		} while (!reached);		
 	}
 }
 
 
-
-
-
-#ifdef DEBUG
-int num_checks = 0;
-int box_intersect = 0;
-int num_block = 0;
-int num_ok = 0;
-#endif
 
 int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(BUCK << BSHIFT)], int num_walls, float incx, float incy) {
 	// first check if point g is with the box instead of circle to avoid expensive
@@ -173,14 +207,15 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 			
 			// check current bucket
 			struct bucket curr_b = b[(bx << BSHIFT) + by];
-			
+			struct vll* sent = curr_b.head;
 			for (int i = 0; i < curr_b.size; i++) {
-
+				int w_idx = sent->v;
+				sent = sent->next;
 				#ifdef DEBUG
 				num_checks++;
 				#endif
 				
-				if (lineIntersect(g_to_ap, walls[curr_b.w[i]])) {		
+				if (lineIntersect(g_to_ap, walls[w_idx])) {		
 					#ifdef DEBUG
 					num_block++;
 					#endif
@@ -531,7 +566,7 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 		calls, (float)nodes_pushed/calls, (float)nodes_popped/calls, (float)(nodes_popped+nodes_pushed)/calls);
 	
 	printf("box_intersects: %d\n", box_intersect);
-	printf("num checks: %d\tnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
+	printf("CHECKS: %d\nnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
 	#endif
 	free(dead);
 	return flow;
