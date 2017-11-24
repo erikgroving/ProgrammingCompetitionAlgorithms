@@ -79,6 +79,7 @@ void makeBuckets(int num_walls, struct wall* walls, struct bucket b[(BUCK << BSH
 			b[(i << BSHIFT) + j].region = tmp;
 		}
 	}
+	
 	// Finding walls in each bucket
 	for (int i = 0; i < BUCK; i++) {
 		for (int j = 0; j < BUCK; j++) {
@@ -176,10 +177,6 @@ int inRange(struct group g, struct ap aps, struct wall* walls, struct bucket b[(
 			
 			for (int i = 0; i < curr_b.size; i++) {
 
-				#ifdef DEBUG
-				num_checks++;
-				#endif
-				
 				if (lineIntersect(g_to_ap, walls[curr_b.w[i]])) {		
 					#ifdef DEBUG
 					num_block++;
@@ -269,6 +266,11 @@ void groupsInRange(struct group** in_range, struct group* groups, struct bucket 
 			if (groups[i].origin_dist_sq > aps[j].max) {				
 				break;
 			}
+			
+			
+			#ifdef DEBUG
+			num_checks++;
+			#endif
 			if (inRange(groups[i], aps[j], walls, b, num_walls, incx, incy)) {
 				*num_valid += (groups[i].num_aps_in_range == 0);
 				groups[i].num_aps_in_range++;
@@ -531,7 +533,7 @@ int maxFlow(struct edge** adj_list, int vertices, int* degree, int num_groups, i
 		calls, (float)nodes_pushed/calls, (float)nodes_popped/calls, (float)(nodes_popped+nodes_pushed)/calls);
 	
 	printf("box_intersects: %d\n", box_intersect);
-	printf("num checks: %d\tnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
+	printf("CHECKS: %d\nnum_ok: %d\tnum_block: %d\n", num_checks, num_ok, num_block);
 	#endif
 	free(dead);
 	return flow;
