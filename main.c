@@ -17,7 +17,7 @@ int main() {
 
 	
 	struct bucket b[BUCK * BUCK];
-		
+	struct abucket a [APBUCK * APBUCK];
 	#ifdef TIME
 	struct timespec start,  end;
 	clock_gettime(CLOCK_REALTIME, &start);
@@ -47,11 +47,23 @@ int main() {
 		
 		makeBuckets(num_walls, walls, b, incx, incy);
 	}
-
+	
+	int max_x = 0;
+	int max_y = 0;
+	for (int i = 0; i < num_aps; i++) {
+		int ap_x = aps[i].x + aps[i].r;
+		max_x = max(max_x, ap_x);
+		int ap_y = aps[i].y + aps[i].r;
+		max_y = max(max_y, ap_y);
+	}
+	
+	float ap_incx = (float)max_x / APBUCK;
+	float ap_incy = (float)max_y / APBUCK;	
+	makeApBuckets(num_aps, aps, a, ap_incx, ap_incy);
 
 
 	// Calculate which access point are in range for a group of students
-	groupsInRange(in_range, groups, b, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out, incx, incy);
+	groupsInRange(in_range, groups, a, b, aps, walls, num_groups, num_aps, num_walls, &num_valid, &num_out, incx, incy, ap_incx, ap_incy);
 
 	
 	
@@ -81,7 +93,19 @@ int main() {
 	/* it actually takes a few milliseconds to iterate over all the 
 	linked lists and free the nodes..........
 	WE ARE TERMINATING ANYWAY D:, THE MEMORY LINKED TO THE PROCESS
-	IS FREED... DON'T YELL AT ME T___T */
+	IS FREED... DON'T YELL AT ME T___T 
+	
+	VALGRIND OUTPUT FOR PROOF
+	==21493==
+	==21493== HEAP SUMMARY:
+	==21493==     in use at exit: 0 bytes in 0 blocks
+	==21493==   total heap usage: 17,607 allocs, 17,607 frees, 114,661,100 bytes allocated
+	==21493==
+	==21493== All heap blocks were freed -- no leaks are possible
+	==21493==
+	==21493== For counts of detected and suppressed errors, rerun with: -v
+	
+	*/
 	/*
 	for (int i = 0; i < vertices; i++) {
 		if (adj_list[i]) {
@@ -101,13 +125,17 @@ int main() {
 	}
 	if(num_walls) {  
 		for (int i = 0; i < BUCK * BUCK; i++) {
-
-				if (b[i].size) {
-					free(b[i].w);
-				}
-
+			if (b[i].size) {
+				free(b[i].w);
+			}
+		}
+	}	
+	for (int i = 0; i < APBUCK * APBUCK; i++) {
+		if (a[i].size) {
+			free(a[i].w);
 		}
 	}
+
 	free((*in_range));
 	free(in_range);
 	free(adj_list);

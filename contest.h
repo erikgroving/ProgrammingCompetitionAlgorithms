@@ -5,6 +5,8 @@
 #define FALSE 0
 #define BUCK 8
 #define BSHIFT 3
+#define APBUCK 16
+#define APSHIFT 4
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
@@ -64,23 +66,30 @@ typedef struct wall {
 typedef struct bucket {
 	int* w;
 	int size;
+	int allocd;
 	struct wall region;
 }bucket;
 
+typedef struct abucket {
+	int* w;
+	int allocd;
+	int size;
+}abucket;
 
 
 void parseInput(struct group**, struct ap**, struct wall**, int* , int* , int*);
+void makeApBuckets(int num_aps, struct ap* aps, struct abucket a[(APBUCK << APSHIFT)], float incx, float incy);
 void makeBuckets(int num_walls, struct wall* walls, struct bucket buckets[BUCK * BUCK], float, float);
 int inRange(struct group, struct ap, struct wall*, struct bucket b[BUCK * BUCK], int, float, float);
 int lineIntersect(struct wall, struct wall);
 int isLeftAndRight(struct wall, struct wall);
 int boxIntersect(struct wall, struct wall);
-void groupsInRange(struct group**, struct group*, struct bucket b[BUCK * BUCK], struct ap* , struct wall* ,
-							int, int, int, int*, int*, float, float);
+void groupsInRange(struct group**, struct group*, struct abucket a[(APBUCK << APSHIFT)], struct bucket b[BUCK * BUCK], struct ap* , struct wall* ,
+							int, int, int, int*, int*, float, float, float, float);
 //void wquickSort(struct wall**, int, int);
 void apquickSort(struct ap**, int, int);
 void gquickSort(struct group**, int, int, int);
 struct edge** createGraph(struct edge***, struct group*, struct ap*, int**, int, int);
 int maxFlow(struct edge**, int, int*, int, int);
-int findPath(struct edge*** adj_list_tp, int vertices, int, int* degree, int, int* flow, int*, int*) ;
+int findPath(struct edge*** adj_list_tp, int vertices, int, int* degree, int, int* flow, int*) ;
 #endif /* CONTEST_H_ */
